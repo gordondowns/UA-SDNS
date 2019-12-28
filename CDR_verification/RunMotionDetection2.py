@@ -14,8 +14,10 @@ pip install opencv-python
 def calculateSD(depth_image1,depth_image2):
 
     # get pythagorean distance between the two images
-    dist = np.where(np.logical_and(depth_image1.nonzero(), depth_image2.nonzero()), np.abs(depth_image1-depth_image2), 0)
-
+    # mask out pixels where one of the frames has a 0 value
+    dist = np.where(np.logical_and(depth_image1 != 0, depth_image2 != 0), np.abs(depth_image1-depth_image2), 0)
+    # dist = np.abs(depth_image1-depth_image2)
+    
     # apply Gaussian smoothing
     mod = cv2.GaussianBlur(dist, (9,9), 0)
 
