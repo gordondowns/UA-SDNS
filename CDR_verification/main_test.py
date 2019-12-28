@@ -19,6 +19,7 @@ STANDARD_DEVIATION_THRESHOLD = 27800
 NUM_POINTS_ABOVE_THRESHOLD_SOUGHT = 10
 bagfiles_dir_path_new = 'new_bags/'
 bagfiles_dir_path_motion = 'bags_with_motion/'
+plot_dir_path = 'plots/'
 save_plot = True
 show_plot = False
 save_only_one_bag = False
@@ -89,7 +90,7 @@ def runMotionDetection(savebagfile_queue,sendfiletocloud_queue,deletefile_queue)
         plt.axhline(y=STANDARD_DEVIATION_THRESHOLD)
         plt.legend()
         if save_plot:
-            plt.savefig('output/'+bag_file_nickname+' '+str(int(time.time()))+'.png')
+            plt.savefig(plot_dir_path+bag_file_nickname+' '+str(int(time.time()))+'.png')
         if show_plot:
             plt.show()
         plt.close()
