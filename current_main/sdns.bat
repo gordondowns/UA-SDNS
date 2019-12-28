@@ -1,2 +1,4 @@
-call <anaconda_dir>/Scripts/activate.bat <anaconda_dir>
-conda activate py37
+call C:/Users/gordi/Anaconda3/Scripts/activate.bat C:/Users/gordi/Anaconda3/
+call conda activate py37
+call python ./main.py
+pause

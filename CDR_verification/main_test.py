@@ -1,15 +1,12 @@
 import numpy as np
 import time
 from matplotlib import pyplot as plt
-from glob import glob
 from RunMotionDetection import GetStandardDeviationsFromBag
 from multiprocessing import Process, Pipe, Queue, SimpleQueue
 import os
 import pyrealsense2 as rs
 from RunMotionDetection import GetStandardDeviationsFromBag as motiondetection1
 from RunMotionDetection2 import GetStandardDeviationsFromBag as motiondetection2
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
 
 '''
 pip install pyrealsense2
@@ -20,15 +17,17 @@ CAMERA_FRAMERATE = 30
 SECONDS_PER_RECORDING = 10.0
 STANDARD_DEVIATION_THRESHOLD = 27800
 NUM_POINTS_ABOVE_THRESHOLD_SOUGHT = 10
-bagfiles_dir_path = 'bags/'
-
+bagfiles_dir_path_new = 'new_bags/'
+bagfiles_dir_path_motion = 'bags_with_motion/'
+save_plot = True
+show_plot = False
+save_only_one_bag = False
 
 def saveBagFile(runmotiondetection_queue):
     while True:
         #Get current time to name the file
         Date = time.asctime(time.localtime(time.time())).replace(':','-')
-        file_path = bagfiles_dir_path + Date + '.bag'
-        file_path = bagfiles_dir_path + str(int(time.time())) + '.bag'
+        file_path = bagfiles_dir_path_new + str(int(time.time())) + ' ' + Date + '.bag'
         
         # Configure depth and color streams
         pipeline = rs.pipeline()
@@ -38,6 +37,7 @@ def saveBagFile(runmotiondetection_queue):
         config.enable_record_to_file(file_path)
         
         # Start streaming
+        print("creating bag file to "+file_path,flush=True)
         pipeline.start(config)
         t0 = time.time()
         
@@ -58,9 +58,10 @@ def saveBagFile(runmotiondetection_queue):
             del(pipeline)
             del(config)
             runmotiondetection_queue.put(file_path)
-            
-            # break to save only one snippet
-            break
+
+            if save_only_one_bag:
+                # break to save only one snippet
+                break
 
 def runMotionDetection(savebagfile_queue,sendfiletocloud_queue,deletefile_queue):
     while True:
@@ -80,6 +81,20 @@ def runMotionDetection(savebagfile_queue,sendfiletocloud_queue,deletefile_queue)
         print("    "+"depth image resolution".ljust(30),all_depth_images[0].shape[0],'x',all_depth_images[0].shape[1])
         print("    "+"color image resolution".ljust(30),all_color_images[0].shape[0],'x',all_color_images[0].shape[1])
 
+
+        bag_file_nickname = file_path.split('/')[-1].split('\\')[-1].split('.')[0]
+        plt.figure(1)
+        plt.title(bag_file_nickname)
+        plt.plot(FNs,SDs,color='blue',linewidth=1.0,label='Intel motion detection algorithm')
+        plt.axhline(y=STANDARD_DEVIATION_THRESHOLD)
+        plt.legend()
+        if save_plot:
+            plt.savefig('output/'+bag_file_nickname+' '+str(int(time.time()))+'.png')
+        if show_plot:
+            plt.show()
+        plt.close()
+
+
         count = sum( SDs > STANDARD_DEVIATION_THRESHOLD)
         if count > NUM_POINTS_ABOVE_THRESHOLD_SOUGHT:
             print("    motion detected",flush=True)
@@ -88,45 +103,23 @@ def runMotionDetection(savebagfile_queue,sendfiletocloud_queue,deletefile_queue)
             print("    NO motion detected",flush=True)
             deletefile_queue.put(file_path)
 
-def sendFileToCloud(runmotiondetection_queue,deletefile_queue):
-    #Login to Google Drive and create drive object
-    gauth = GoogleAuth()
-    
-    # Try to load saved client credentials
-    gauth.LoadCredentialsFile("mycreds.txt")
-
-    if gauth.credentials is None:
-        # Authenticate if they're not there
-
-        # This is what solved the issues:
-        gauth.GetFlow()
-        gauth.flow.params.update({'access_type': 'offline'})
-        gauth.flow.params.update({'approval_prompt': 'force'})
-
-        gauth.LocalWebserverAuth()
-
-    elif gauth.access_token_expired:
-        # Refresh them if expired
-        gauth.Refresh()
-    else:
-        # Initialize the saved creds
-        gauth.Authorize()
-
-    # Save the current credentials to a file
-    gauth.SaveCredentialsFile("mycreds.txt")  
-
-    drive = GoogleDrive(gauth)
-
+def sendFileToCloud(runmotiondetection_queue):
+    # Send file to cloud by moving it into a folder that syncs with Dropbox.
+    # Dropbox automatically deletes the file from local storage once it is uploaded.
     while True:
+        time.sleep(1)
         file_path = runmotiondetection_queue.get()
         print("        sending file to cloud "+file_path,flush=True)
-        with open(file_path,"r",encoding='ansi') as file:
-            file_drive = drive.CreateFile({'title':os.path.basename(file.name) })  
-            file_drive.SetContentFile(file.name) 
-            file_drive.Upload()
-            print("        file uploaded",flush=True)
-
-        deletefile_queue.put(file_path)
+        file_name = file_path.split('/')[-1]
+        while True:
+            try:
+                os.rename(file_path,bagfiles_dir_path_motion+file_name)
+                print("            file sent to cloud: "+file_path,flush=True)
+                break
+            except Exception as e:
+                print("            failed to send file to cloud: "+file_path,flush=True)
+                print("           ",e,flush=True)
+                time.sleep(5)
 
 def deleteFile(deletefile_queue):
     while True:
@@ -136,7 +129,7 @@ def deleteFile(deletefile_queue):
         while True:
             try:
                 os.remove(file_path)
-                print("            file deleted: "+file_path+'\n',flush=True)
+                print("            file deleted: "+file_path,flush=True)
                 break
             except Exception as e:
                 print("            failed to delete file: "+file_path,flush=True)
@@ -150,66 +143,20 @@ def main():
     runmotiondetection_sendfiletocloud_queue = Queue()
     any_deletefile_queue = Queue()
 
-    safebagfile_process = Process(target=saveBagFile,args=(savebagfile_runmotiondetection_queue,))
+    savebagfile_process = Process(target=saveBagFile,args=(savebagfile_runmotiondetection_queue,))
     runmotiondetection_process = Process(target=runMotionDetection,args=(savebagfile_runmotiondetection_queue,runmotiondetection_sendfiletocloud_queue,any_deletefile_queue,))
-    sendfiletocloud_process = Process(target=sendFileToCloud,args=(savebagfile_runmotiondetection_queue,any_deletefile_queue,))
+    sendfiletocloud_process = Process(target=sendFileToCloud,args=(runmotiondetection_sendfiletocloud_queue,))
     deletefile_process = Process(target=deleteFile,args=(any_deletefile_queue,))
 
-    safebagfile_process.start()
+    savebagfile_process.start()
     runmotiondetection_process.start()
     sendfiletocloud_process.start()
     deletefile_process.start()
 
-    safebagfile_process.join()
+    savebagfile_process.join()
     runmotiondetection_process.join()
     sendfiletocloud_process.join()
     deletefile_process.join()
-
-
-    # bag_file_paths = []
-    # bag_file_paths += ["../sample bag data/object_detection2.bag"]
-    # # bag_file_paths += ["../sample bag data/outdoors.bag"]
-    # bag_file_paths += ["../sample bag data/Alternating motion every 15 for 2 mins incremental motion-002.bag"]
-    # bag_file_paths += ["../sample bag data/Alternating motion under bed sheets every 15 incremental 2 min-003.bag"]
-    # bag_file_paths += ["../sample bag data/No Motion 30 seconds.bag"]
-
-    # show_plot = True
-    # show_plot = False
-    # save_plot = True
-    # save_plot = False
-
-    # t_init = time()
-
-
-
-
-    # for bag_file_path in bag_file_paths:
-        
-    #     t0 = time()
-
-    #     all_frame_numbers, FNs, SDs = GetStandardDeviationsFromBag(bag_file_path, 10, 10)
-
-    #     elapsed_time = time() - t0
-    #     frames_per_sec = len(all_frame_numbers) / (elapsed_time + 0.0000001)
-    #     print("\nelapsed time",elapsed_time)
-    #     print("frames analyzed per second",frames_per_sec,end='\n')
-
-    #     if save_plot or show_plot:
-    #         bag_file_nickname = bag_file_path.split('/')[-1].split('\\')[-1].split('.')[0]
-    #         plt.figure(1)
-    #         plt.title(bag_file_nickname)
-    #         plt.plot(FNs,SDs,color='blue',linewidth=1.0,label='Intel motion detection algorithm')
-    #         # plt.axvline(x=71,linewidth=0.7,color='red',linestyle='--')
-    #         plt.legend()
-    #         if save_plot:
-    #             plt.savefig('output/'+bag_file_nickname+' '+str(int(time()))+'.png')
-    #         if show_plot:
-    #             plt.show()
-    #         else:
-    #             plt.close()
-
-    # print("total time:",time() - t_init())
-
 
 
 if __name__ == '__main__':

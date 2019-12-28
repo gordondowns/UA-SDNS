@@ -152,7 +152,7 @@ def main():
 
     safebagfile_process = Process(target=saveBagFile,args=(savebagfile_runmotiondetection_queue,))
     runmotiondetection_process = Process(target=runMotionDetection,args=(savebagfile_runmotiondetection_queue,runmotiondetection_sendfiletocloud_queue,any_deletefile_queue,))
-    sendfiletocloud_process = Process(target=sendFileToCloud,args=(savebagfile_runmotiondetection_queue,any_deletefile_queue,))
+    sendfiletocloud_process = Process(target=sendFileToCloud,args=(runmotiondetection_sendfiletocloud_queue,any_deletefile_queue,))
     deletefile_process = Process(target=deleteFile,args=(any_deletefile_queue,))
 
     safebagfile_process.start()

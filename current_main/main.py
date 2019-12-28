@@ -1,14 +1,11 @@
 import numpy as np
 import time
 from matplotlib import pyplot as plt
-from glob import glob
 from RunMotionDetection import GetStandardDeviationsFromBag
 from multiprocessing import Process, Pipe, Queue, SimpleQueue
 import os
 import pyrealsense2 as rs
 from RunMotionDetection import GetStandardDeviationsFromBag
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
 
 '''
 pip install pyrealsense2
@@ -27,8 +24,7 @@ def saveBagFile(runmotiondetection_queue):
     while True:
         #Get current time to name the file
         Date = time.asctime(time.localtime(time.time())).replace(':','-')
-        # file_path = bagfiles_dir_path_new + Date + '.bag'
-        file_path = bagfiles_dir_path_new + str(int(time.time())) + '.bag'
+        file_path = bagfiles_dir_path_new + str(int(time.time())) + ' ' + Date + '.bag'
         
         # Configure depth and color streams
         pipeline = rs.pipeline()
