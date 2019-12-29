@@ -78,7 +78,7 @@ def runMotionDetection(savebagfile_queue,sendfiletocloud_queue,deletefile_queue)
         print("    "+"number of frames".ljust(30),num_frames)
         print("    "+"time elapsed".ljust(30),time_length)
         
-        print("    "+"true framerate".ljust(30),num_frames/time_length)
+        print("    "+"true framerate".ljust(30),(num_frames-1)/time_length)
         print("    "+"depth image resolution".ljust(30),all_depth_images[0].shape[0],'x',all_depth_images[0].shape[1])
         print("    "+"color image resolution".ljust(30),all_color_images[0].shape[0],'x',all_color_images[0].shape[1])
 
