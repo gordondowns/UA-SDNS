@@ -6,10 +6,12 @@ import os
 import pyrealsense2 as rs
 from RunMotionDetection import GetStandardDeviationsFromBag
 from glob import glob
+from pynput import keyboard
 
 '''
 pip install pyrealsense2
 pip install opencv-python
+pip install pynput
 '''
 
 CAMERA_FRAMERATE = 30
@@ -20,9 +22,20 @@ bagfiles_dir_path_new = 'new_bags/'
 bagfiles_dir_path_motion = 'bags_with_motion/'
 
 
-def saveBagFile(runmotiondetection_queue):
+def saveBagFile(runmotiondetection_queue,keypress_queue):
     while True:
-        #Get current time to name the file
+
+        # First, check if user pressed key to stop recording
+        try:
+            # Queue.get(block=False) throws exception if nothing in queue
+            message = keypress_queue.get(block=False)
+            if message == 'stop':
+                print('stopping recording bag files')
+                return
+        except:
+            pass
+
+        # Get current time to name the file
         Date = time.asctime(time.localtime(time.time())).replace(':','-')
         file_path = bagfiles_dir_path_new + str(int(time.time())) + ' ' + Date + '.bag'
         
@@ -55,6 +68,17 @@ def saveBagFile(runmotiondetection_queue):
             del(pipeline)
             del(config)
             runmotiondetection_queue.put(file_path)
+
+def on_activate_f(savebagfile_queue):
+    print('f key pressed')
+    savebagfile_queue.put('stop')
+
+def keyPressMonitor(savebagfile_queue):
+    # Collect events until released
+    with keyboard.GlobalHotKeys({
+            'f': lambda: on_activate_f(savebagfile_queue)
+            }) as h:
+        h.join()
 
 def runMotionDetection(savebagfile_queue,sendfiletocloud_queue,deletefile_queue):
     while True:
@@ -117,18 +141,21 @@ def main():
     savebagfile_runmotiondetection_queue = Queue()
     runmotiondetection_sendfiletocloud_queue = Queue()
     any_deletefile_queue = Queue()
+    key_savebagfile_queue = Queue()
 
     # declare multiprocessing processes, and connect with queues
-    savebagfile_process = Process(target=saveBagFile,args=(savebagfile_runmotiondetection_queue,))
+    savebagfile_process = Process(target=saveBagFile,args=(savebagfile_runmotiondetection_queue,key_savebagfile_queue,))
     runmotiondetection_process = Process(target=runMotionDetection,args=(savebagfile_runmotiondetection_queue,runmotiondetection_sendfiletocloud_queue,any_deletefile_queue,))
     sendfiletocloud_process = Process(target=sendFileToCloud,args=(runmotiondetection_sendfiletocloud_queue,))
     deletefile_process = Process(target=deleteFile,args=(any_deletefile_queue,))
+    key_process = Process(target=keyPressMonitor,args=(key_savebagfile_queue,))
 
     # start multiprocessing processes
     savebagfile_process.start()
     runmotiondetection_process.start()
     sendfiletocloud_process.start()
     deletefile_process.start()
+    key_process.start()
 
     # end multiprocessing processes if they finish
     # they won't finish (barring exceptions), since they're all infinite while loops.
@@ -136,6 +163,7 @@ def main():
     runmotiondetection_process.join()
     sendfiletocloud_process.join()
     deletefile_process.join()
+    key_process.join()
 
 
 if __name__ == '__main__':
