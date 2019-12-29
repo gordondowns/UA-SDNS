@@ -1,11 +1,11 @@
 import numpy as np
 import time
-from matplotlib import pyplot as plt
 from RunMotionDetection import GetStandardDeviationsFromBag
 from multiprocessing import Process, Pipe, Queue, SimpleQueue
 import os
 import pyrealsense2 as rs
 from RunMotionDetection import GetStandardDeviationsFromBag
+from glob import glob
 
 '''
 pip install pyrealsense2
@@ -13,9 +13,9 @@ pip install opencv-python
 '''
 
 CAMERA_FRAMERATE = 30
-SECONDS_PER_RECORDING = 10.0
-STANDARD_DEVIATION_THRESHOLD = 27800
-NUM_POINTS_ABOVE_THRESHOLD_SOUGHT = 10
+SECONDS_PER_RECORDING = 300.0
+STANDARD_DEVIATION_THRESHOLD = 28000
+NUM_POINTS_ABOVE_THRESHOLD_SOUGHT = 8
 bagfiles_dir_path_new = 'new_bags/'
 bagfiles_dir_path_motion = 'bags_with_motion/'
 
@@ -34,7 +34,7 @@ def saveBagFile(runmotiondetection_queue):
         config.enable_record_to_file(file_path)
         
         # Start streaming
-        print("creating bag file to "+file_path,flush=True)
+        print("creating bag file "+file_path,flush=True)
         pipeline.start(config)
         t0 = time.time()
         
@@ -47,7 +47,7 @@ def saveBagFile(runmotiondetection_queue):
                 if not depth_frame or not color_frame:
                     continue
                 if (time.time() - t0) >= SECONDS_PER_RECORDING:
-                    print("saving bag file to "+file_path,flush=True)
+                    print("saving bag file "+file_path,flush=True)
                     break
         finally:
             # Stop streaming
@@ -106,20 +106,32 @@ def deleteFile(deletefile_queue):
 
 
 def main():
+
+    # Delete all bag files that haven't been analyzed yet. This is to prevent backlogs.
+    old_bag_paths = glob(bagfiles_dir_path_new+"*.bag")
+    for obp in old_bag_paths:
+        os.remove(obp)
+    print(len(old_bag_paths),'old bag files deleted')
+
+    # initialize multiprocessing queues
     savebagfile_runmotiondetection_queue = Queue()
     runmotiondetection_sendfiletocloud_queue = Queue()
     any_deletefile_queue = Queue()
 
+    # declare multiprocessing processes, and connect with queues
     savebagfile_process = Process(target=saveBagFile,args=(savebagfile_runmotiondetection_queue,))
     runmotiondetection_process = Process(target=runMotionDetection,args=(savebagfile_runmotiondetection_queue,runmotiondetection_sendfiletocloud_queue,any_deletefile_queue,))
     sendfiletocloud_process = Process(target=sendFileToCloud,args=(runmotiondetection_sendfiletocloud_queue,))
     deletefile_process = Process(target=deleteFile,args=(any_deletefile_queue,))
 
+    # start multiprocessing processes
     savebagfile_process.start()
     runmotiondetection_process.start()
     sendfiletocloud_process.start()
     deletefile_process.start()
 
+    # end multiprocessing processes if they finish
+    # they won't finish (barring exceptions), since they're all infinite while loops.
     savebagfile_process.join()
     runmotiondetection_process.join()
     sendfiletocloud_process.join()
