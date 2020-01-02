@@ -2,7 +2,6 @@ import pyrealsense2 as rs
 import numpy as np
 import cv2
 from time import time
-from matplotlib import pyplot as plt
 from collections import deque
 
 '''
@@ -15,7 +14,7 @@ def calculateSD(depth_image1,depth_image2):
 
     # get pythagorean distance between the two images
     dist = np.abs(depth_image1-depth_image2)
-    # get pythagorean distance and mask out pixels where one of the frames has a 0 value
+    # alternatively, get pythagorean distance and mask out pixels where one of the frames has a 0 value
     # dist = np.where(np.logical_and(depth_image1 != 0, depth_image2 != 0), np.abs(depth_image1-depth_image2), 0)
 
     # apply Gaussian smoothing
@@ -26,7 +25,7 @@ def calculateSD(depth_image1,depth_image2):
 
     return stDev[0][0]
 
-def GetStandardDeviationsFromBag(bag_file_path, frame_index_difference = 10, do_analysis_every_n_frames = 1, bag_timeout_ms = 500):
+def GetStandardDeviationsFromBag(bag_file_path, frame_index_difference = 10, do_analysis_every_n_frames = 1, bag_timeout_ms = 500, filter=False):
 
     try:
         pipeline = rs.pipeline()
@@ -34,29 +33,41 @@ def GetStandardDeviationsFromBag(bag_file_path, frame_index_difference = 10, do_
         rs.config.enable_device_from_file(config, bag_file_path, repeat_playback=False)
         profile = pipeline.start(config).get_device().as_playback().set_real_time(False)
         
-        depth_images_deque = deque()
+        depth_frames_deque = deque()
         SDs = []
         FNs = []
         all_frame_numbers = []
         frames_since_last_analysis = 0
 
-        while True:
+        if filter:
+            spatial = rs.spatial_filter()
+            decimation = rs.decimation_filter()
+            hole_filling = rs.hole_filling_filter()
+            hole_filling.set_option(rs.option.holes_fill, 2)
+
+        while True: 
             frames = pipeline.wait_for_frames(timeout_ms=bag_timeout_ms)
             fn = frames.frame_number
-            # print(fn)
             all_frame_numbers += [fn]
             frames_since_last_analysis += 1
             cur_depth_frame = frames.get_depth_frame()
-            cur_depth_image = np.asanyarray(cur_depth_frame.get_data())
-            depth_images_deque.append(cur_depth_image)
-            if len(depth_images_deque) > frame_index_difference:
-                past_depth_image = depth_images_deque.popleft()
+
+            if filter:
+                cur_depth_frame = decimation.process(cur_depth_frame)
+                cur_depth_frame = spatial.process(cur_depth_frame)
+                cur_depth_frame = hole_filling.process(cur_depth_frame)
+
+            depth_frames_deque.append(cur_depth_frame)
+
+            if len(depth_frames_deque) > frame_index_difference:
+                cur_depth_image = np.asanyarray(cur_depth_frame.get_data())
+                past_depth_image = np.asanyarray(depth_frames_deque.popleft().get_data())
                 if frames_since_last_analysis >= do_analysis_every_n_frames:
                     SDs += [calculateSD(cur_depth_image,past_depth_image)]
                     FNs += [fn]
                     frames_since_last_analysis = 0
     except Exception as e:
-        # print(e)
+        print(e)
         if "arrive" in str(e):
             pipeline.stop()
             del(pipeline)
