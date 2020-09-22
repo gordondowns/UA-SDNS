@@ -1,5 +1,6 @@
 # UA-SDNS
 Seizure detection and notification system utilizing Python and Intel's RealSense D415 depth camera
+
 Initially developed at the University of Arizona with funding from Intel Corporation
 
 ### Installation
