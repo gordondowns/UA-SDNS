@@ -48,7 +48,7 @@ UA-SDNS requires [Python 3](https://www.python.org/downloads/) and [Git](https:/
 |--|--|
 | `Frame did not arrive within 1000` | RealSense D415 camera connection failed. Unplug the camera, plug it back in, and re-run sdns.bat. |
 | `MemoryError: Unable to allocate XX.X GiB for an array with shape (XXX, XXX, XXX) and data type uint8` | Computer memory is insufficient to store a video of the length and resolution described in `data_collection2\main.py`. Please go to `data_collection2\main.py` and modify the parameter `SECONDS_PER_RECORDING`. |
-| `RuntimeError: Couldn't resolve requests` | Depth resolution is too high for your hardware setup. First, try plugging in the RealSense D415 camera into a USB 3 port (the Intel RealSense Viewer can tell you what kind of USB port the camera is plugged into). If that doesn't work, try using a lower depth resolution  |
+| `RuntimeError: Couldn't resolve requests` | Depth resolution is too high for your hardware setup. First, try plugging in the RealSense D415 camera into a USB 3 port (the Intel RealSense Viewer can tell you what kind of USB port the camera is plugged into). If that doesn't work, try using a lower depth resolution by modifying the parameters `DEPTH_X_SIZE,DEPTH_Y_SIZE` in the file `data_collection2\main.py`. |
 
 Have a problem you can't figure out? Contact gordon.sdns@gmail.com for technical assistance.
 
