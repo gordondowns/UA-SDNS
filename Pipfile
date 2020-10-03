@@ -10,6 +10,8 @@ pylint = "*"
 pyrealsense2 = "*"
 numpy = "*"
 pynput = "*"
+imageio = "*"
+imageio-ffmpeg = "*"
 
 [requires]
 python_version = "3.7"

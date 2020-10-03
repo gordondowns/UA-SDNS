@@ -8,7 +8,7 @@ import imageio
 
 
 CAMERA_FRAMERATE = 30
-SECONDS_PER_RECORDING = 5 * 60
+SECONDS_PER_RECORDING = 5 #* 60
 RECORDING_DIR = 'recordings/'
 # DEPTH_X_SIZE,DEPTH_Y_SIZE = 1280,720
 DEPTH_X_SIZE,DEPTH_Y_SIZE = 640,480
@@ -56,13 +56,11 @@ def DoTheThing(keypress_queue):
             print('rolling')
             infrared_matrix = np.roll(infrared_matrix,shift=-i,axis=0)
             depth_matrix = np.roll(depth_matrix,shift=-i,axis=0)
-            print('saving depth video as .NPY')
             np.save(newdir+'depth_matrix.npy',depth_matrix)
             del(depth_matrix)
             if SAVE_INFRARED_NPY:
                 np.save(newdir+'infrared_matrix.npy',infrared_matrix)
 
-            print('saving infrared video as .MP4')
             # depth_matrix = depth_matrix.astype('uint8')
             # imageio.mimwrite(newdir+'depth_video.mp4', depth_matrix, fps=30)
             imageio.mimwrite(newdir+'infrared_video.mp4', infrared_matrix, fps=30)
@@ -101,32 +99,51 @@ def DoTheThing(keypress_queue):
             pass
 
 
-def on_keypress(key,dothething_queue):
-    if key == keyboard.Key.space:
-        print('spacebar pressed')
-        dothething_queue.put('save')
+def on_activate_f(dothething_queue):
+    print('f key pressed')
+    dothething_queue.put('save')
+    return False
+
+def on_activate_f2(key):
+    global keypress_queue
+    if key == keyboard.Key.f11:
+        print('f key pressed')
+        keypress_queue.put('save')
         return False
 
-def keyPressMonitor(dothething_queue):
-    with keyboard.Listener(on_press=lambda key: on_keypress(key,dothething_queue)) as listener:
-        listener.join()
+# def keyPressMonitor(dothething_queue):
+#     # Collect events until released
+#     with keyboard.GlobalHotKeys({
+#             # keyboard.Key.space: lambda: on_activate_space(dothething_queue),
+#             'f': lambda: on_activate_f(dothething_queue),
+#             }) as h:
+#         h.join()
 
 def main():
+    global keypress_queue
 
     # initialize multiprocessing queues
     keypress_queue = Queue()
 
     # declare multiprocessing processes, and connect with queues
     dothething_process = Process(target=DoTheThing,args=(keypress_queue,))
-    key_process = Process(target=keyPressMonitor,args=(keypress_queue,))
+    # key_process = Process(target=keyPressMonitor,args=(keypress_queue,))
+    # with keyboard.GlobalHotKeys({
+    #         'f': lambda: on_activate_f(keypress_queue),
+    #         }) as h:
+    #     h.join()
+
+    with keyboard.Listener(on_press=on_activate_f2) as listener:
+        listener.join()
+
 
     # start multiprocessing processes
     dothething_process.start()
-    key_process.start()
+    # key_process.start()
 
     # end multiprocessing processes once they finish
     dothething_process.join()
-    key_process.join()
+    # key_process.join()
 
 
 if __name__ == '__main__':
