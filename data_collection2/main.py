@@ -35,6 +35,7 @@ def RecordRollingVideo(keypress_queue):
     i = 0
     message = 'r'
     print('starting recording')
+    print('Press spacebar to save last',SECONDS_PER_RECORDING,'seconds of video. Press q to quit and delete the recordings.')
 
     while True:
 
@@ -130,6 +131,7 @@ def keyPressMonitor(dothething_queue):
 
 def main():
     print('initializing SDNS program')
+    print(f'configuration: Depth resolution: {DEPTH_X_SIZE}x{DEPTH_Y_SIZE}. Seconds per recording: {SECONDS_PER_RECORDING}')
 
     # initialize multiprocessing queues
     keypress_queue = Queue()
