@@ -11,11 +11,12 @@ CAMERA_FRAMERATE = 30
 SECONDS_PER_RECORDING = 5 * 60
 RECORDING_DIR = 'recordings/'
 # DEPTH_X_SIZE,DEPTH_Y_SIZE = 1280,720
+# DEPTH_X_SIZE,DEPTH_Y_SIZE = 960,540
 DEPTH_X_SIZE,DEPTH_Y_SIZE = 640,480
 INFRARED_X_SIZE,INFRARED_Y_SIZE = 640,480
 SAVE_INFRARED_NPY = False
 
-def DoTheThing(keypress_queue):
+def RecordRollingVideo(keypress_queue):
     matrix_length = int(SECONDS_PER_RECORDING*CAMERA_FRAMERATE)
     depth_matrix = np.zeros((matrix_length,DEPTH_Y_SIZE,DEPTH_X_SIZE),dtype=np.uint16)
     infrared_matrix = np.zeros((matrix_length,INFRARED_Y_SIZE,INFRARED_X_SIZE),dtype=np.uint8)
@@ -53,10 +54,10 @@ def DoTheThing(keypress_queue):
             end_time = time.asctime(time.localtime(time.time())).replace(':','-')
             newdir = RECORDING_DIR+end_time+'/'
             os.mkdir(newdir)
-            print('rolling')
+            print('rolling videos')
             infrared_matrix = np.roll(infrared_matrix,shift=-i,axis=0)
             depth_matrix = np.roll(depth_matrix,shift=-i,axis=0)
-            print('saving depth video as .NPY')
+            print('saving depth video as .NPY (this step might take a minute)')
             np.save(newdir+'depth_matrix.npy',depth_matrix)
             del(depth_matrix)
             if SAVE_INFRARED_NPY:
@@ -73,8 +74,19 @@ def DoTheThing(keypress_queue):
                 f.write(f'time that recording system was initialized: {start_time}\ntime that "save" button was pressed: {end_time}')
             print('recordings saved to "'+newdir+'"')
             return
+        elif message == 'quit':
+            print('stopping recording')
+            pipeline.stop()
+            del(pipeline)
+            del(config)
 
-        # no "stop" keypress, so wait for frames
+            print('deleting recordings')
+            del(depth_matrix)
+            del(infrared_matrix)
+            print('recordings deleted')
+            return
+
+        # no "stop" nor "quit" keypress, so wait for frames
         try:
             # Wait for a coherent pair of frames: depth and infrared
             frames = pipeline.wait_for_frames(timeout_ms=1000)
@@ -106,18 +118,24 @@ def on_keypress(key,dothething_queue):
         print('spacebar pressed')
         dothething_queue.put('save')
         return False
+    elif hasattr(key,'char'): #letters
+        if key.char == 'q':
+            print('q key pressed')
+            dothething_queue.put('quit')
+            return False
 
 def keyPressMonitor(dothething_queue):
     with keyboard.Listener(on_press=lambda key: on_keypress(key,dothething_queue)) as listener:
         listener.join()
 
 def main():
+    print('initializing SDNS program')
 
     # initialize multiprocessing queues
     keypress_queue = Queue()
 
     # declare multiprocessing processes, and connect with queues
-    dothething_process = Process(target=DoTheThing,args=(keypress_queue,))
+    dothething_process = Process(target=RecordRollingVideo,args=(keypress_queue,))
     key_process = Process(target=keyPressMonitor,args=(keypress_queue,))
 
     # start multiprocessing processes
