@@ -45,7 +45,9 @@ UA-SDNS requires [Python 3](https://www.python.org/downloads/) and [Git](https:/
 
 ## Usage
 
-Run `UA-SDNS\data_collection2\sdns.bat` to start the program. To save the last 5 minutes of video, press **spacebar**. To quit and delete the recordings, press **q**.
+Run `UA-SDNS\data_collection2\sdns.bat` to start the program.
+
+To save the last 5 minutes of video, press **spacebar**. To quit and delete the recordings, press **q**.
 
 
 
