@@ -29,7 +29,11 @@ UA-SDNS requires [Python 3](https://www.python.org/downloads/) and [Git](https:/
 Run `UA-SDNS\data_collection2\sdns.bat` to start the program.
 
 Then, control the system by pressing keys on your keyboard. Note that you do not have to have the sdns.bat window active in order to enter commands.
-  
+
+Also, note that when text-to-speech is enabled, you must wait until the speaker finishes speaking before you can enter another command. However, with text-to-speech disabled, commands can be entered as quickly as you would like. Commands are executed in the order in which they are received.
+
+Depth resolution, text-to-speech mode, video length, and other settings can be configured at the top of the file `data_collection2\main.py`.
+
 | key | action |
 |--|--|
 | spacebar / s | save last 5 minutes of video |

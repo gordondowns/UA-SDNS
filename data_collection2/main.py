@@ -9,13 +9,14 @@ import pyttsx3
 
 
 CAMERA_FRAMERATE = 30
-SECONDS_PER_RECORDING = 5 * 60
+SECONDS_PER_RECORDING = 5 #* 60
 RECORDING_DIR = 'recordings/'
 DEPTH_X_SIZE,DEPTH_Y_SIZE = 1280,720
 # DEPTH_X_SIZE,DEPTH_Y_SIZE = 960,540
 # DEPTH_X_SIZE,DEPTH_Y_SIZE = 640,480
 INFRARED_X_SIZE,INFRARED_Y_SIZE = 640,480
 SAVE_INFRARED_NPY = False
+ENABLE_TEXT_TO_SPEECH = True
 
 
 #################################################################
@@ -165,23 +166,41 @@ def RecordRollingVideo(keypress_queue):
 
 
 def on_keypress(key,keypress_queue):
+    if ENABLE_TEXT_TO_SPEECH:
+        engine = pyttsx3.init()
+        
     if key == keyboard.Key.space:
         print('spacebar pressed')
         keypress_queue.put('save')
+        if ENABLE_TEXT_TO_SPEECH:
+            engine.say('save')
+            engine.runAndWait()
     elif hasattr(key,'char'): #letters
         if key.char == 'q':
             print('q key pressed')
             keypress_queue.put('quit')
+            if ENABLE_TEXT_TO_SPEECH:
+                engine.say('quit')
+                engine.runAndWait()
             return False
         elif key.char == 's':
             print('s key pressed')
             keypress_queue.put('save')
+            if ENABLE_TEXT_TO_SPEECH:
+                engine.say('save')
+                engine.runAndWait()
         elif key.char == 'p':
             print('p key pressed')
             keypress_queue.put('pause')
+            if ENABLE_TEXT_TO_SPEECH:
+                engine.say('pause')
+                engine.runAndWait()
         elif key.char == 'r':
             print('r key pressed')
             keypress_queue.put('resume')
+            if ENABLE_TEXT_TO_SPEECH:
+                engine.say('re zoom')
+                engine.runAndWait()
 
 
 def keyPressMonitor(keypress_queue):
