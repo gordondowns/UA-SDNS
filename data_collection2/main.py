@@ -5,6 +5,7 @@ import os
 import pyrealsense2 as rs
 from pynput import keyboard
 import imageio
+import pyttsx3
 
 
 CAMERA_FRAMERATE = 30
@@ -30,6 +31,7 @@ def RecordRollingVideo(keypress_queue):
     i = 0
     state = 'initialize'
     pipeline_on = False
+    matrices_allocated = False
 
     while True:
         # First, check if user pressed a key to change states
@@ -44,10 +46,14 @@ def RecordRollingVideo(keypress_queue):
             # allocate memory for depth and IR matrices
             depth_matrix = np.zeros((matrix_length,DEPTH_Y_SIZE,DEPTH_X_SIZE),dtype=np.uint16)
             infrared_matrix = np.zeros((matrix_length,INFRARED_Y_SIZE,INFRARED_X_SIZE),dtype=np.uint8)
+            matrices_allocated = True
             # Get current time to save in the info.txt file
             start_time = time.asctime(time.localtime(time.time())).replace(':','-')
             state = 'resume'
         elif state == 'resume':
+            if not matrices_allocated:
+                state = 'initialize'
+                continue
             if pipeline_on:
                 print('WARNING: System is already recording. No action taken.')
                 state = 'record'
@@ -106,6 +112,7 @@ def RecordRollingVideo(keypress_queue):
             print('saving infrared video as .MP4')
             imageio.mimwrite(newdir+'infrared_video.mp4', infrared_matrix, fps=30)
             del(infrared_matrix)
+            matrices_allocated = False
 
             # save info.txt
             with open(newdir+'info.txt','w') as f:
@@ -129,6 +136,7 @@ def RecordRollingVideo(keypress_queue):
                 del(infrared_matrix)
             except:
                 pass
+            matrices_allocated = False
             print('recordings deleted')
             return
         elif state == 'record':
