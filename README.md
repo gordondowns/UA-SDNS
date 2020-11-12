@@ -55,7 +55,7 @@ Have a problem you can't figure out? Contact gordon.sdns@gmail.com for technical
 
 That's awesome!
 
-If you'd like to **contribute data and use the system as we develop it**, contact Iwan (email TBD).
+If you'd like to **contribute data and use the system as we develop it**, contact Iwan at iwan.sdns@gmail.com.
 
 If you are a developer and would like to **contribute to the codebase**, contact Gordon at gordon.sdns@gmail.com.  
 
